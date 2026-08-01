@@ -1,9 +1,7 @@
 {
-  system ? builtins.currentSystem,
-  pkgs ? (import ./nixpkgs.nix).nixpkgs-26_05 system,
-  lib ? pkgs.lib,
-  symlinkJoin ? pkgs.symlinkJoin,
-  libretro ? pkgs.libretro,
+  lib,
+  symlinkJoin,
+  libretro,
   defaultLicenseAllowlist ? lib.attrValues {
     inherit (lib.licenses)
       bsd2
@@ -41,7 +39,7 @@ symlinkJoin {
         licenses = lib.toList (drv.meta.license or lib.licenses.unfree);
       }
     ))
-    (builtins.map (
+    (map (
       drv:
       drv.overrideAttrs (
         oldAttrs:
@@ -53,7 +51,7 @@ symlinkJoin {
           {
             installPhase = ''
               				runHook preInstall
-              				install -Dt "${builtins.placeholder "out"}${oldAttrs.passthru.libretroCore}" *${drv.stdenv.hostPlatform.extensions.sharedLibrary}
+              				install -Dt "${placeholder "out"}${oldAttrs.passthru.libretroCore}" *${drv.stdenv.hostPlatform.extensions.sharedLibrary}
               				runHook postInstall
               			'';
           }

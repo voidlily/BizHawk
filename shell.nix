@@ -1,12 +1,12 @@
 {
-  system ? builtins.currentSystem,
-  pkgs ? import <nixpkgs> { inherit system; },
-  lib ? pkgs.lib,
-  mkShell ? pkgs.mkShell,
-  git-cola ? pkgs.git-cola,
-  git ? pkgs.gitMinimal,
-  nano ? pkgs.nano,
-  powershell ? pkgs.powershell,
+  lib,
+  mkShell,
+  git-cola,
+  git,
+  nano,
+  powershell,
+  callPackage,
+  callPackages,
   debugDotnetHostCrashes ? false, # forwarded to Dist/launch-scripts.nix
   debugPInvokes ? false, # forwarded to Dist/launch-scripts.nix
   forNixOS ? true,
@@ -16,10 +16,11 @@
   useVSCode ? false,
 }:
 let
-  avail = import ./. {
+  avail = callPackages ./. {
     inherit
+      callPackage
+      callPackages
       forNixOS
-      system
       debugDotnetHostCrashes
       debugPInvokes
       profileManagedCalls

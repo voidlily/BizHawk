@@ -1,22 +1,12 @@
 {
-  system ? builtins.currentSystem,
-  pkgs ? (import Dist/nixpkgs.nix).nixpkgs-24_05 system,
-  lib ? pkgs.lib,
-  stdenv ? pkgs.stdenvNoCC,
+  lib,
+  callPackage,
+  callPackages,
   # infrastructure
-  buildDotnetModule ? pkgs.buildDotnetModule,
-  dpkg ? pkgs.dpkg,
-  fetchFromGitHub ? pkgs.fetchFromGitHub,
-  fetchFromGitLab ? pkgs.fetchFromGitLab,
-  fetchpatch ? pkgs.fetchpatch,
-  fetchzip ? pkgs.fetchzip,
-  makeDesktopItem ? pkgs.makeDesktopItem,
-  mkNugetDeps ? pkgs.mkNugetDeps,
-  runCommand ? pkgs.runCommand,
-  symlinkJoin ? pkgs.symlinkJoin,
-  writeShellScript ? pkgs.writeShellScript,
-  writeShellScriptBin ? pkgs.writeShellScriptBin,
-  writeText ? pkgs.writeText,
+  dpkg,
+  fetchzip,
+  makeDesktopItem,
+  runCommand,
   # source
   hawkSourceInfoDevBuild ?
     let # called "dev build", but you could pass whatever branch and commit you want here
@@ -29,47 +19,18 @@
         name = "BizHawk-${version}";
       }; # source derivation; did have filter here for speed, but it wasn't faster and it wasn't correct and it couldn't be made correct and I'm mad
     },
-  # makedeps
-  dotnet-sdk_8 ? pkgs.dotnet-sdk_8,
-  dotnet-sdk_6 ? pkgs.dotnet-sdk_6,
-  dotnet-sdk_5 ?
-    let
-      result = builtins.tryEval (pkgs.dotnet-sdk_5 or builtins.throw "no .NET 5 SDK");
-    in
-    if result.success then
-      result.value
-    else
-      ((import Dist/nixpkgs.nix).nixpkgs-22_11-with-dotnet-5 system fetchzip).dotnet-sdk_5,
-  git ? pkgs.gitMinimal, # only when building from-CWD (`-local`)
   # rundeps
-  coreutils ? pkgs.coreutils,
-  gnome-themes-extra ? pkgs.gnome-themes-extra or pkgs.gnome3.gnome-themes-extra,
-  gtk2-x11 ? pkgs.gtk2-x11,
-  kate ? pkgs.kate.overrideAttrs (oldAttrs: {
-    patches = (oldAttrs.patches or [ ]) ++ [
-      (fetchpatch {
-        url = "https://invent.kde.org/utilities/kate/-/commit/9ddf4f0c9eb3c26a0ab33c862d2b161bcbdc6a6e.patch"; # Fix name of OmniSharp LSP binary
-        hash = "sha256-a2KqoxuuVhfAQUJA3/yEQb1QCoa1JCvLz7BZZnSLnzI=";
-      })
-    ];
-  }),
-  libgdiplus ? pkgs.libgdiplus,
-  libGL ? pkgs.libGL,
-  lua ? pkgs.lua54Packages.lua,
-  mono ? pkgs.mono,
-  nixGLChannel ? (
-    pkgs.nixgl or import (fetchzip {
-      url = "https://github.com/guibou/nixGL/archive/489d6b095ab9d289fe11af0219a9ff00fe87c7c5.tar.gz";
-      hash = "sha512-GvV707ftLvE0MCTfMJb/M86S2Nxf3vai+HPwq0QvJylmMBwliqYx/nW8X2ja2ruOHzaw3MXXmAxjnv5MMUn07w==";
-    }) { inherit pkgs; }
-  ),
-  nixGL ? nixGLChannel.auto.nixGLDefault,
-  omnisharp-roslyn ? pkgs.omnisharp-roslyn,
-  #, nixVulkan ? nixGLChannel.auto.nixVulkanNvidia
-  openal ? pkgs.openal,
-  SDL2 ? pkgs.SDL2,
-  udev ? pkgs.udev,
-  zstd ? pkgs.zstd,
+  coreutils,
+  kate,
+  mono,
+  omnisharp-roslyn,
+  # historical
+  fetchFromGitHub,
+  fetchFromGitLab,
+  mkNugetDeps,
+  dotnet-sdk_5,
+  dotnet-sdk_6,
+  dotnet-sdk_8,
   # other parameters
   buildConfig ? "Release", # "Debug"/"Release"
   debugPInvokes ? false, # forwarded to Dist/launch-scripts.nix
@@ -78,7 +39,6 @@
   extraDefines ? "", # added to `<DefineConstants/>`, so ';'-separated
   extraDotnetBuildFlags ? "", # currently passed to EVERY `dotnet build` and `dotnet test` invocation (and does not replace the flags for parallel compilation added by default)
   forNixOS ? true,
-  libretroCores ? import Dist/packages-libretro.nix { inherit system; },
   initConfig ? { }, # forwarded to Dist/launch-scripts.nix (see docs there)
   profileManagedCalls ? false, # forwarded to Dist/launch-scripts.nix
 }:
@@ -136,13 +96,10 @@ let
     ;
   launchScriptsFor =
     bizhawkAssemblies: isManualLocalBuild:
-    import Dist/launch-scripts.nix {
+    callPackages Dist/launch-scripts.nix {
       inherit
-        lib
-        writeShellScript
-        writeText
+
         bizhawkAssemblies
-        nixGL
         debugPInvokes
         debugDotnetHostCrashes
         initConfig
@@ -152,32 +109,15 @@ let
       mkfifo = coreutils;
       mktemp = coreutils;
     };
-  pp = import Dist/packages.nix {
+  pp = callPackages Dist/packages.nix {
     inherit
-      lib
-      stdenv
+
       populateHawkSourceInfo
       replaceDotWithUnderscore
-      buildDotnetModule
-      fetchpatch
-      fetchzip
       hardLinkJoin
       launchScriptsFor
       makeDesktopItem
       releaseTagSourceInfos
-      runCommand
-      symlinkJoin
-      writeShellScriptBin
-      git
-      gnome-themes-extra
-      gtk2-x11
-      libgdiplus
-      libGL
-      lua
-      openal
-      SDL2
-      udev
-      zstd
       buildConfig
       doCheck
       extraDefines
@@ -259,6 +199,7 @@ let
       };
       launchScriptsForLocalBuild = launchScriptsFor emuhawk-local.assemblies true;
     };
+  libretroCores = callPackage Dist/packages-libretro.nix { };
 in
 combined
 // lib.listToAttrs (
